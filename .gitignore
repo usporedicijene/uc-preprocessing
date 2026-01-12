@@ -1,0 +1,6 @@
+/target
+.env
+/cleaned_data
+/data_comparison_report.md
+/data_comparison_report.json
+/reports
