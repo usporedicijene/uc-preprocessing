@@ -117,8 +117,27 @@ Measured against product **"Cedevita limun 500g"**:
 | "cedevota 500g" (subset + typo) | 0.800 | -- |
 | "Toaletni papir troslojni 8 rola" (unrelated) | 0.094 | **0.059** |
 
-Recommended strategy: filter candidates with **overlap >= 0.4**, then rank by **Jaccard descending**.
-This ensures partial queries find matches (via overlap) while tighter matches rank first (via Jaccard).
+### Why overlap outperforms Jaccard for ranking
+
+Query **"Barila"** (single word, 8 fingerprint bits) measured against real products:
+
+| Product | Overlap | Jaccard | Bits |
+|---|---|---|---|
+| BASILIKO BARILA | 1.000 | 0.500 | 16 |
+| Barilla Spaghetti, 500g | 1.000 | 0.333 | 24 |
+| UMAK BOSILJAK 400G BARILA | 1.000 | 0.320 | 25 |
+| Barilla Pesto Rosso | 0.875 | 0.333 | 20 |
+| Barilla Umak Bolognese | 0.875 | 0.292 | 23 |
+| **Skuša** (false positive) | **0.500** | **0.364** | 7 |
+| SKUSA PECENA (false positive) | 0.625 | 0.294 | 14 |
+
+Jaccard ranks "Skuša" (0.364) **above** most real Barilla products (0.286-0.333) because
+its short name (7 bits) keeps the union denominator small. Overlap correctly separates
+genuine matches (0.875-1.000) from collision-based false positives (0.500-0.625).
+
+Recommended strategy: filter candidates with **overlap >= 0.65**, then rank by **overlap descending**
+(with Jaccard as a tiebreaker). A secondary floor of **Jaccard >= 0.2** removes residual noise.
+See the [Backend Usage](#searching-products) section below for rationale.
 
 ## Backend Usage
 
@@ -128,26 +147,46 @@ The backend must apply the **exact same algorithm** (normalize, per-word trigram
 
 ### Searching products
 
-Recommended two-step strategy -- overlap filters candidates, Jaccard ranks them:
+Recommended two-step strategy -- overlap filters candidates, overlap ranks them:
 
 ```
 1. Compute query_bits from user input
 2. For each product:
    a. overlap = popcount(query & product) / popcount(query)
-   b. If overlap >= threshold (e.g., 0.4), keep as candidate
+   b. If overlap >= 0.65, keep as candidate
 3. For each candidate:
    a. jaccard = popcount(query & product) / popcount(query | product)
-4. Sort candidates by jaccard descending
+   b. If jaccard < 0.2, discard (removes residual noise)
+4. Sort candidates by overlap descending, then jaccard descending as tiebreaker
 5. Return top-k results
 ```
 
-Why two metrics:
+Why overlap for ranking (not Jaccard):
 
-- **Overlap ratio** asks "are the query's trigrams present in the product?" -- good for
-  filtering, but gives equal scores to "voda one" and "voda one two three" when the
-  query is "voda" (both score 1.0).
-- **Jaccard** additionally penalizes extra unmatched content in the product, so shorter /
-  tighter matches rank higher ("voda one" at 0.55 vs "voda one two" at 0.38).
+- **Jaccard** penalizes extra unmatched content in the product. This is desirable for
+  multi-word queries ("barilla spaghetti" correctly ranks "Barilla Spaghetti 500g" above
+  "Barilla Pesto Genovese"). However, for short single-word queries it backfires:
+  products with short names and a few hash collisions can outscore genuine matches
+  with longer names. For example, querying "Barila" gives "Skuša" (5 chars, 7 bits)
+  Jaccard 0.364, but "Barilla Spaghetti, 500g" (a real match) only Jaccard 0.333
+  because its 24-bit fingerprint inflates the union denominator.
+
+- **Overlap ratio** asks "what fraction of the query's trigrams are present in the
+  product?" -- this correctly identifies genuine matches regardless of product name
+  length. "Barilla Spaghetti, 500g" scores overlap 1.000 (all query trigrams present),
+  while "Skuša" scores only 0.500 (only hash collisions). This makes overlap a more
+  robust primary ranking signal.
+
+- The **overlap >= 0.65 threshold** eliminates hash-collision false positives for short
+  queries while keeping genuine matches. With 256 bits and typical product names
+  setting 15-30 bits, random overlap with an 8-bit query is ~0.35-0.50 in expectation,
+  so 0.65 sits comfortably above the noise floor. For the "Barila" example, this
+  filters out "Skuša" (0.500) and "SKUSA PECENA" (0.625) while keeping all real
+  Barilla products (0.875-1.000).
+
+- **Jaccard as a tiebreaker** still helps within groups of equally high overlap:
+  among products that all score overlap 1.000, "CEDEVITA 500g" ranks above
+  "CEDEVITA VIN NARANČA 900g" because of tighter Jaccard.
 
 ### Python example
 
