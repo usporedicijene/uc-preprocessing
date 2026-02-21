@@ -4,6 +4,7 @@ mod comparators;
 mod config;
 mod csv_helpers;
 mod derived_traits;
+mod embeddings;
 mod extractors;
 mod loaders;
 mod processors;

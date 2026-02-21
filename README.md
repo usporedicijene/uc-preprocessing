@@ -11,6 +11,7 @@ A Rust tool that processes Croatian retail store data - validates, cleans, and p
 - **Filters** excluded products and invalid prices
 - **Merges** anchor price data for comparison analysis
 - **Compares** day-to-day data changes with detailed reports
+- **Name search fingerprinting** for fast, typo-tolerant product name matching
 - **Parallel processing** for fast execution on large datasets
 
 ## Quick Start
@@ -76,7 +77,7 @@ raw-data/
 cleaned_data/
 ├── konzum/
 │   ├── stores.csv      # City names mapped
-│   ├── products.csv    # Categories mapped, filtered
+│   ├── products.csv    # Categories mapped, filtered, name search fingerprint added
 │   └── prices.csv      # Invalid prices filtered, derived columns added
 └── ...
 ```
@@ -110,6 +111,7 @@ cargo test
 ## Documentation
 
 - [Data Processing Details](docs/DATA_PROCESSING.md) - Validation, filtering, anchor data
+- [Name Search Fingerprinting](docs/NAME_SEARCH.md) - Trigram-based product name matching algorithm
 - [Comparison Analysis](docs/COMPARISON.md) - Change rate metrics and reports
 - [Logging Guide](docs/LOGGING.md) - Log levels and configuration
 
