@@ -1,4 +1,4 @@
-/// Normalize a Croatian product name for SimHash fingerprinting.
+/// Normalize a Croatian product name for trigram fingerprinting.
 ///
 /// Applies: lowercase, diacritics stripping, punctuation removal, whitespace collapse.
 pub fn normalize_croatian_text(name: &str) -> String {

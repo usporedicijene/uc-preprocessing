@@ -438,4 +438,4 @@ The implementation lives in `src/embeddings/`:
 | `mod.rs` | Module root, re-exports `compute_name_hash` |
 | `normalization.rs` | `normalize_croatian_text()` — text cleaning and word sorting |
 | `trigrams.rs` | `generate_trigrams()` — per-word character trigram generation |
-| `simhash.rs` | `compute_bitvec()`, `bitvec_to_hex()`, `compute_name_hash()`, plus comparison utilities |
+| `fingerprint.rs` | `compute_bitvec()`, `bitvec_to_hex()`, `compute_name_hash()`, plus comparison utilities |

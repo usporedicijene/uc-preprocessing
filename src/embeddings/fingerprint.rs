@@ -277,15 +277,19 @@ mod tests {
         let reorder = compute_name_hash("500g limun Cedevita");
         let bv_reorder = hex_to_bitvec(&reorder).unwrap();
         let j_reorder = jaccard(&bv_product, &bv_reorder);
-        eprintln!("[word reorder]   jaccard={j_reorder:.3}  contains={}",
-            contains(&bv_product, &bv_reorder));
+        eprintln!(
+            "[word reorder]   jaccard={j_reorder:.3}  contains={}",
+            contains(&bv_product, &bv_reorder)
+        );
 
         // 2) Word subset (partial query)
         let subset = compute_name_hash("cedevita 500g");
         let bv_subset = hex_to_bitvec(&subset).unwrap();
         let o_subset = overlap_ratio(&bv_product, &bv_subset);
-        eprintln!("[word subset]    overlap={o_subset:.3}  contains={}",
-            contains(&bv_product, &bv_subset));
+        eprintln!(
+            "[word subset]    overlap={o_subset:.3}  contains={}",
+            contains(&bv_product, &bv_subset)
+        );
 
         // 3) Single typo
         let typo = compute_name_hash("Cedevota limun 500g");

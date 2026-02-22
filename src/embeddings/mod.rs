@@ -1,5 +1,5 @@
 mod normalization;
-mod simhash;
+mod fingerprint;
 mod trigrams;
 
-pub use simhash::compute_name_hash;
+pub use fingerprint::compute_name_hash;
