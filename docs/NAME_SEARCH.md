@@ -71,6 +71,20 @@ trigram "ede" → hash → bit position 187 → set bit 187
 
 The 256-bit vector (4 × u64) is encoded as a 64-character zero-padded hexadecimal string for storage in the CSV column.
 
+## Guarantees
+
+Two properties hold by design, regardless of the specific words involved:
+
+**Word order does not matter.** Words are sorted alphabetically during normalization,
+so "vino bijelo", "bijelo vino", "Bijelo VINO", and "VINO bijelo" all produce the
+exact same fingerprint.
+
+**Any word-subset query has overlap 1.0.** Because trigrams are generated per word,
+removing a word only removes its trigrams -- it never introduces new ones. Searching
+"vino bijelo" against "vino antonio bijelo" always yields overlap = 1.0, since the
+query's trigram bits are a strict subset of the product's bits. This holds for any
+combination of words, not just specific examples.
+
 ## Similarity Metrics
 
 On the backend, decode the hex string back into a 256-bit vector and use bitwise operations to compare:
