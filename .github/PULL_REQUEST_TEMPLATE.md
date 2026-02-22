@@ -13,7 +13,8 @@ Fixes #(issue number)
 
 ## Checklist
 - [ ] My code follows the project's style guidelines
-- [ ] I have run `cargo fmt` and `cargo clippy`
+- [ ] I have run `cargo fmt` (required by CI)
+- [ ] I have run `cargo clippy` (recommended; currently not enforced by CI)
 - [ ] I have added tests that prove my fix/feature works
 - [ ] All new and existing tests pass (`cargo test`)
 - [ ] I have updated documentation as needed
