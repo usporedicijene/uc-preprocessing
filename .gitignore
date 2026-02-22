@@ -4,3 +4,17 @@
 /data_comparison_report.md
 /data_comparison_report.json
 /reports
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors / IDEs
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Logs
+*.log
