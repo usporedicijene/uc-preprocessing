@@ -79,11 +79,12 @@ Two properties hold by design, regardless of the specific words involved:
 so "vino bijelo", "bijelo vino", "Bijelo VINO", and "VINO bijelo" all produce the
 exact same fingerprint.
 
-**Any word-subset query has overlap 1.0.** Because trigrams are generated per word,
-removing a word only removes its trigrams -- it never introduces new ones. Searching
-"vino bijelo" against "vino antonio bijelo" always yields overlap = 1.0, since the
-query's trigram bits are a strict subset of the product's bits. This holds for any
-combination of words, not just specific examples.
+**Any word-subset query has overlap 1.0 in trigram space.** Because trigrams are
+generated per word, removing a word only removes its trigrams -- it never introduces
+new ones. Searching "vino bijelo" against "vino antonio bijelo" always yields
+trigram-set containment for the query. In the 256-bit hashed representation, this
+translates to overlap 1.0 in normal operation; hash collisions can only add extra
+bits, not remove required query bits.
 
 ## Similarity Metrics
 
@@ -161,10 +162,11 @@ The backend must apply the **exact same algorithm** (normalize, per-word trigram
 
 ### Searching products
 
-Recommended two-step strategy -- overlap filters candidates, overlap ranks them:
+Recommended strategy -- overlap filters candidates, overlap ranks them:
 
 ```
 1. Compute query_bits from user input
+   - If query_bits == 0 (empty/too-short input after normalization), return no results
 2. For each product:
    a. overlap = popcount(query & product) / popcount(query)
    b. If overlap >= 0.65, keep as candidate
@@ -312,22 +314,31 @@ class ProductSearcher:
                 self.fingerprints.append(hex_to_int(fp_hex))
 
     def search(
-        self, query: str, threshold: float = 0.4, top_k: int = 10
+        self,
+        query: str,
+        overlap_threshold: float = 0.65,
+        jaccard_floor: float = 0.2,
+        top_k: int = 10,
     ) -> list[tuple[dict, float]]:
         query_bv = compute_fingerprint(query)
         if query_bv == 0:
             return []
 
         # Step 1: filter by overlap ratio (are the query trigrams present?)
-        # Step 2: rank by Jaccard (tighter matches rank higher)
+        # Step 2: optional Jaccard floor removes residual noise
+        # Step 3: rank by overlap, then Jaccard as tiebreaker
         candidates = []
         for product, fp in zip(self.products, self.fingerprints):
-            if overlap_ratio(fp, query_bv) >= threshold:
-                score = jaccard(query_bv, fp)
-                candidates.append((product, score))
+            ov = overlap_ratio(fp, query_bv)
+            if ov < overlap_threshold:
+                continue
+            jac = jaccard(query_bv, fp)
+            if jac < jaccard_floor:
+                continue
+            candidates.append((product, ov, jac))
 
-        candidates.sort(key=lambda x: x[1], reverse=True)
-        return candidates[:top_k]
+        candidates.sort(key=lambda x: (x[1], x[2]), reverse=True)
+        return [(product, ov) for product, ov, _ in candidates[:top_k]]
 
 
 # --- Usage ---
@@ -338,7 +349,7 @@ query = "cedevita 500g"
 results = searcher.search(query)
 
 for product, score in results:
-    print(f"{score:.3f}  {product['name']}")
+    print(f"{score:.3f}  {product['name']}")  # score = overlap
 ```
 
 ### Performance
@@ -352,6 +363,8 @@ All operations are bitwise (AND, OR, popcount) on 256 bits:
 | 1,000,000 products | ~1–2 milliseconds |
 
 No index structure is needed. Linear scan is sufficient for retail-scale data.
+Timings are indicative and depend on CPU, memory layout, language/runtime, and
+whether you run scalar or vectorized popcount.
 
 > Python's `int` handles 256-bit integers natively. For higher throughput, fingerprints
 > can be stored as NumPy `uint64` arrays (4 per product) and compared with vectorized
