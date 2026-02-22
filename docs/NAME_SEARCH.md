@@ -204,6 +204,18 @@ Why overlap for ranking (not Jaccard):
   among products that all score overlap 1.000, "CEDEVITA 500g" ranks above
   "CEDEVITA VIN NARANČA 900g" because of tighter Jaccard.
 
+### Combined score for display
+
+The backend computes a single display score:
+
+- **overlap = 1.0** → `score = 1.0` (perfect match — all query trigrams found)
+- **overlap < 1.0** → `score = overlap × 0.8 + jaccard × 0.2`
+
+Internally, perfect-overlap results are sorted with a tiny Jaccard bonus
+(`1.0 + jaccard × 0.0001`) to preserve tiebreaking, then capped to 1.0 for display.
+This ensures "Banane" (jaccard=1.0) sorts above "ČIPS OD BANANE NATURA 100g"
+(jaccard=0.235) while both display score 1.0.
+
 ### Python example
 
 Both Rust and Python use the same hash function (FNV-1a 64-bit), so the
@@ -370,11 +382,42 @@ whether you run scalar or vectorized popcount.
 > can be stored as NumPy `uint64` arrays (4 per product) and compared with vectorized
 > bitwise operations.
 
+### NumPy vectorization (production)
+
+The production backend stores all product fingerprints in a single contiguous
+`(N, 4)` uint64 NumPy array, where each row holds the 4 limbs of a 256-bit
+fingerprint. This enables fully vectorized search:
+
+1. Convert the query fingerprint to a `(4,)` uint64 array.
+2. Broadcast AND across all N products: `and_bits = fp_array & query` → `(N, 4)`.
+3. Popcount via byte-level lookup table: view as uint8, index into a 256-entry LUT,
+   sum per row.
+4. Compute overlap and Jaccard for all N products in one pass.
+5. Apply threshold mask, extract candidates.
+
+Product popcounts are pre-computed at startup to avoid recomputation during Jaccard
+calculation (using `popcount(a|b) = popcount(a) + popcount(b) - popcount(a&b)`).
+
+Memory: 32 bytes per product (vs ~65 bytes for Python int objects). For 270k
+products the index is ~8.6 MB, and a search completes in ~3-5 ms.
+
+See [usporedicijene/docs/SEARCH.md](../../../nvteh/usporedicijene/docs/SEARCH.md)
+for the full backend implementation details.
+
 ## Limitations
 
-- **Not semantic**: "mlijeko" (milk) and "milk" will not match. The fingerprint captures character-level surface similarity, not meaning.
-- **Short queries** (1-2 characters): Too few trigrams to produce a discriminating fingerprint. Recommend a minimum query length of 3 characters.
-- **Hash collisions**: With 256 bits and ~20-30 trigrams per product, occasional collisions are possible but rare. They may cause slight false-positive overlap but do not affect ranking quality in practice.
+- **Not semantic**: "mlijeko" (milk) and "milk" will not match. The fingerprint
+  captures character-level surface similarity, not meaning.
+- **Short queries** (1-2 characters): Too few trigrams to produce a discriminating
+  fingerprint. Recommend a minimum query length of 3 characters.
+- **Hash collisions with short single-word queries**: A 6-character query like
+  "Barila" sets only ~8 bits. Products with many bits set (15-30 for typical names)
+  can match 4-6 of those 8 bits purely by chance. The overlap >= 0.65 threshold
+  eliminates most of these (expected random overlap is ~0.35-0.50), but a few
+  longer product names with many trigrams can still reach overlap 0.75 by collision.
+  These are pushed far down the ranking by the combined score formula and never
+  appear in the top-k results in practice, but they do inflate candidate counts.
+  Multi-word queries (15+ bits) are much more collision-resistant.
 
 ## Column Format
 
