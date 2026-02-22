@@ -39,8 +39,9 @@ mod tests {
 
     #[test]
     fn test_subset_words_produce_subset_trigrams() {
-        let full: std::collections::HashSet<String> =
-            generate_trigrams("500g cedevita limun").into_iter().collect();
+        let full: std::collections::HashSet<String> = generate_trigrams("500g cedevita limun")
+            .into_iter()
+            .collect();
         let partial: std::collections::HashSet<String> =
             generate_trigrams("500g cedevita").into_iter().collect();
 

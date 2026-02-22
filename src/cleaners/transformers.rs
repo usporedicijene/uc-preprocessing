@@ -352,12 +352,9 @@ pub fn transform_and_sort_products_csv(
                 }
 
                 if !has_hash_col {
-                    let name_value = name_col_index
-                        .and_then(|idx| record.get(idx))
-                        .unwrap_or("");
+                    let name_value = name_col_index.and_then(|idx| record.get(idx)).unwrap_or("");
                     let hash = compute_name_hash(name_value);
-                    let mut fields: Vec<String> =
-                        record.iter().map(|f| f.to_string()).collect();
+                    let mut fields: Vec<String> = record.iter().map(|f| f.to_string()).collect();
                     fields.push(hash);
                     records.push(csv::StringRecord::from(fields));
                 } else {
