@@ -1,0 +1,43 @@
+name: Tag Release
+
+on:
+  push:
+    branches: [ main, master ]
+
+permissions:
+  contents: write
+
+jobs:
+  tag-from-cargo-version:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Create version tag if missing
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        VERSION="$(awk -F\" '/^version = "/ { print $2; exit }' Cargo.toml)"
+        if [[ -z "${VERSION}" ]]; then
+          echo "Could not read package version from Cargo.toml"
+          exit 1
+        fi
+
+        TAG="v${VERSION}"
+        echo "Resolved version: ${VERSION}"
+        echo "Resolved tag: ${TAG}"
+
+        if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" > /dev/null 2>&1; then
+          echo "Tag ${TAG} already exists. Skipping."
+          exit 0
+        fi
+
+        # Lightweight tag: no git user/email setup required.
+        git tag "${TAG}"
+        git push origin "${TAG}"
+        echo "Created and pushed ${TAG}"

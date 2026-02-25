@@ -24,7 +24,7 @@ The program performs comprehensive validation before processing:
 When all cities and categories match their references, the program:
 
 1. **Creates output directory** with the same subdirectory structure
-2. **Transforms `products.csv`**: Apply category mappings, filter excluded categories, sort
+2. **Transforms `products.csv`**: Apply category mappings, filter excluded categories, compute name search fingerprint (`uc_name_searching_algorithm_1`), sort
 3. **Processes `prices.csv`**: Filter invalid prices/excluded products, merge anchor data, add derived columns, sort
 4. **Transforms `stores.csv`**: Apply city mappings, sort
 
@@ -35,6 +35,12 @@ When `STORES_DIR_PATH_ANCHOR_CLEANED_DATA` is set:
 - **Match records** by `store_id` + `barcode` combination
 - **Add derived columns**: `derived_price`, `uc_anchor_derived_price`, `derived_price_change`
 - **Handle missing data gracefully**: Empty values for non-matching records
+
+### Name Search Column (products.csv)
+
+| Column | Description |
+|--------|-------------|
+| `uc_name_searching_algorithm_1` | 256-bit trigram fingerprint for fuzzy name matching (see [Name Search Fingerprinting](NAME_SEARCH.md)) |
 
 ### Derived Price Columns
 

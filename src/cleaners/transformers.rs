@@ -1,6 +1,7 @@
 use crate::cleaners::types::AnchorPriceData;
 use crate::derived_traits::calculators::calculate_derived_price;
 use crate::derived_traits::calculators::calculate_price_change;
+use crate::embeddings::compute_name_hash;
 use crate::loaders::csv_loaders::load_product_categories;
 use rayon::prelude::*;
 use std::collections::HashMap;
@@ -292,15 +293,24 @@ pub fn transform_and_sort_products_csv(
     let output_file = File::create(target_file)?;
     let mut writer = csv::Writer::from_writer(output_file);
 
-    // Write header
     let headers = reader.headers()?.clone();
-    writer.write_record(&headers)?;
+
+    let mut new_headers = headers.iter().map(|h| h.to_string()).collect::<Vec<_>>();
+    let has_hash_col = new_headers
+        .iter()
+        .any(|h| h == "uc_name_searching_algorithm_1");
+    if !has_hash_col {
+        new_headers.push("uc_name_searching_algorithm_1".to_string());
+    }
+    writer.write_record(&new_headers)?;
 
     // Find category column index
     let category_col_index = headers
         .iter()
         .position(|h| h == "category")
         .ok_or("Category column not found in products.csv")?;
+
+    let name_col_index = headers.iter().position(|h| h == "name");
 
     let mut invalid_rows = 0;
     let mut total_rows = 0;
@@ -341,7 +351,15 @@ pub fn transform_and_sort_products_csv(
                     continue; // Skip this row
                 }
 
-                records.push(record);
+                if !has_hash_col {
+                    let name_value = name_col_index.and_then(|idx| record.get(idx)).unwrap_or("");
+                    let hash = compute_name_hash(name_value);
+                    let mut fields: Vec<String> = record.iter().map(|f| f.to_string()).collect();
+                    fields.push(hash);
+                    records.push(csv::StringRecord::from(fields));
+                } else {
+                    records.push(record);
+                }
             }
             Err(e) => {
                 invalid_rows += 1;

@@ -241,6 +241,113 @@ fn test_transform_and_sort_stores_csv() {
     assert_eq!(records[2].get(0).unwrap(), "003");
 }
 
+// Integration test: Transform products adds hash column and correct values
+#[test]
+fn test_transform_and_sort_products_adds_name_hash_column() {
+    use crate::cleaners::transformers::transform_and_sort_products_csv;
+    use crate::embeddings::compute_name_hash;
+
+    let mut source_file = NamedTempFile::new().unwrap();
+    writeln!(
+        source_file,
+        "product_id,name,category\n\
+             111111,Cedevita limun 500g,Drinks\n\
+             222222,Toaletni papir troslojni 8 rola,Household"
+    )
+    .unwrap();
+
+    let target_file = NamedTempFile::new().unwrap();
+    let category_mappings = HashMap::new();
+
+    transform_and_sort_products_csv(source_file.path(), target_file.path(), &category_mappings)
+        .unwrap();
+
+    let mut reader = csv::Reader::from_path(target_file.path()).unwrap();
+    let headers = reader.headers().unwrap().clone();
+
+    let hash_col_count = headers
+        .iter()
+        .filter(|h| *h == "uc_name_searching_algorithm_1")
+        .count();
+    assert_eq!(
+        hash_col_count, 1,
+        "Hash column should be present exactly once"
+    );
+
+    let product_id_idx = headers.iter().position(|h| h == "product_id").unwrap();
+    let name_idx = headers.iter().position(|h| h == "name").unwrap();
+    let hash_idx = headers
+        .iter()
+        .position(|h| h == "uc_name_searching_algorithm_1")
+        .unwrap();
+
+    for record in reader.records() {
+        let record = record.unwrap();
+        let product_id = record.get(product_id_idx).unwrap();
+        let name = record.get(name_idx).unwrap();
+        let actual_hash = record.get(hash_idx).unwrap();
+        let expected_hash = compute_name_hash(name);
+
+        assert_eq!(
+            actual_hash, expected_hash,
+            "Hash mismatch for product_id {product_id}"
+        );
+        assert!(
+            !actual_hash.is_empty(),
+            "Hash should be non-empty for product_id {product_id}"
+        );
+    }
+}
+
+// Integration test: Existing hash column is kept without duplication/recomputation
+#[test]
+fn test_transform_and_sort_products_keeps_existing_hash_column() {
+    use crate::cleaners::transformers::transform_and_sort_products_csv;
+
+    let mut source_file = NamedTempFile::new().unwrap();
+    writeln!(
+        source_file,
+        "product_id,name,category,uc_name_searching_algorithm_1\n\
+             111111,Cedevita limun 500g,Drinks,precomputed_hash_1\n\
+             222222,Toaletni papir troslojni 8 rola,Household,precomputed_hash_2"
+    )
+    .unwrap();
+
+    let target_file = NamedTempFile::new().unwrap();
+    let category_mappings = HashMap::new();
+
+    transform_and_sort_products_csv(source_file.path(), target_file.path(), &category_mappings)
+        .unwrap();
+
+    let mut reader = csv::Reader::from_path(target_file.path()).unwrap();
+    let headers = reader.headers().unwrap().clone();
+
+    let hash_col_count = headers
+        .iter()
+        .filter(|h| *h == "uc_name_searching_algorithm_1")
+        .count();
+    assert_eq!(hash_col_count, 1, "Hash column should not be duplicated");
+
+    let product_id_idx = headers.iter().position(|h| h == "product_id").unwrap();
+    let hash_idx = headers
+        .iter()
+        .position(|h| h == "uc_name_searching_algorithm_1")
+        .unwrap();
+
+    let records: Vec<csv::StringRecord> = reader.records().map(|r| r.unwrap()).collect();
+    assert_eq!(records.len(), 2);
+
+    for record in records {
+        let product_id = record.get(product_id_idx).unwrap();
+        let hash = record.get(hash_idx).unwrap();
+        match product_id {
+            "111111" => assert_eq!(hash, "precomputed_hash_1"),
+            "222222" => assert_eq!(hash, "precomputed_hash_2"),
+            _ => panic!("Unexpected product_id in output: {product_id}"),
+        }
+    }
+}
+
 // Integration test: Full cleaned data creation workflow
 #[test]
 fn test_create_cleaned_data() {
@@ -291,6 +398,21 @@ fn test_create_cleaned_data() {
     assert!(cleaned_subdir.join("stores.csv").exists());
     assert!(cleaned_subdir.join("products.csv").exists());
     assert!(cleaned_subdir.join("prices.csv").exists());
+
+    // Verify products.csv includes the name-hash column and value
+    let mut reader = csv::Reader::from_path(cleaned_subdir.join("products.csv")).unwrap();
+    let headers = reader.headers().unwrap().clone();
+    let hash_idx = headers
+        .iter()
+        .position(|h| h == "uc_name_searching_algorithm_1")
+        .expect("Expected uc_name_searching_algorithm_1 column in cleaned products.csv");
+
+    let records: Vec<csv::StringRecord> = reader.records().map(|r| r.unwrap()).collect();
+    assert_eq!(records.len(), 1);
+    assert!(
+        !records[0].get(hash_idx).unwrap().is_empty(),
+        "Expected non-empty name hash in cleaned products.csv"
+    );
 }
 
 // Add more integration tests here as needed

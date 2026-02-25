@@ -1,0 +1,56 @@
+name: Version Guard
+
+on:
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  require-version-bump:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Validate version bump for release-relevant changes
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        BASE_REF="${{ github.base_ref }}"
+        git fetch origin "${BASE_REF}" --depth=1
+
+        CHANGED_FILES="$(git diff --name-only "origin/${BASE_REF}...HEAD")"
+        echo "Changed files:"
+        echo "${CHANGED_FILES}"
+
+        # Require version bumps only for release-relevant changes.
+        # Docs and GitHub meta updates are excluded.
+        RELEASE_RELEVANT_FILES="$(echo "${CHANGED_FILES}" | grep -E -v '^(docs/|\.github/|CHANGELOG\.md$|README\.md$|$)' || true)"
+
+        if [[ -z "${RELEASE_RELEVANT_FILES}" ]]; then
+          echo "No release-relevant files changed; version bump not required."
+          exit 0
+        fi
+
+        OLD_VERSION="$(git show "origin/${BASE_REF}:Cargo.toml" | awk -F\" '/^version = "/ { print $2; exit }')"
+        NEW_VERSION="$(awk -F\" '/^version = "/ { print $2; exit }' Cargo.toml)"
+
+        if [[ -z "${OLD_VERSION}" || -z "${NEW_VERSION}" ]]; then
+          echo "Could not read version from Cargo.toml."
+          exit 1
+        fi
+
+        echo "Base version: ${OLD_VERSION}"
+        echo "PR version:   ${NEW_VERSION}"
+
+        if [[ "${OLD_VERSION}" == "${NEW_VERSION}" ]]; then
+          echo ""
+          echo "Version bump required: release-relevant changes were detected but Cargo.toml version did not change."
+          echo "Update Cargo.toml version before merging."
+          exit 1
+        fi
+
+        echo "Version bump detected."
