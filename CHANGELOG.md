@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2026-02-22
+
+### Changed
+- Replace deprecated `actions-rs/toolchain` with `dtolnay/rust-toolchain` and add `Swatinem/rust-cache` in CI
+- Pin Rust 1.93 via `rust-toolchain.toml`
+- Simplify pre-commit hooks: remove unused external repo, consolidate all Rust hooks as local
+- Improve Makefile: fix `.PHONY`, add `lint`, `deny`, and `ci` targets
+- Expand `.gitignore` with OS, editor, and log patterns
+
+### Added
+- `deny.toml` for dependency license, advisory, and source policy checks via `cargo-deny`
+- `license` field in `Cargo.toml` package metadata
+
 ## [2.0.0] - 2026-02-22
 
 ### Added
@@ -22,5 +35,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial public release
 
+[2.0.1]: https://github.com/usporedicijene/uc-preprocessing/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/usporedicijene/uc-preprocessing/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/usporedicijene/uc-preprocessing/releases/tag/v1.0.0
