@@ -1,52 +1,52 @@
-.PHONY: build run clean release test check all
+.PHONY: all build run clean release run-release test check fmt clippy lint deny ci doc update deps
 
-# Default target
 all: build
 
-# Build the project in debug mode
 build:
 	cargo build
 
-# Run the project in debug mode
 run:
 	cargo run
 
-# Clean build artifacts
 clean:
 	cargo clean
 
-# Build in release mode
 release:
 	cargo build --release
 
-# Run in release mode
 run-release:
 	cargo run --release
 
-# Run tests (use: make test ARGS="-- --nocapture" or make test ARGS="test_name")
+# use: make test ARGS="-- --nocapture" or make test ARGS="test_name"
 test:
 	cargo test $(ARGS)
 
-# Check code without building
 check:
 	cargo check
 
-# Format code
 fmt:
 	cargo fmt
 
-# Lint code with Clippy
 clippy:
 	cargo clippy -- -D warnings
 
-# Generate documentation
+lint: fmt clippy
+
+# Dependency policy checks (license, advisories, bans, duplicates)
+deny:
+	cargo deny check
+
+# Run what CI runs
+ci:
+	cargo fmt --all -- --check
+	cargo clippy --all-targets --all-features -- -D warnings
+	cargo test --verbose
+
 doc:
 	cargo doc --no-deps --open
 
-# Update dependencies
 update:
 	cargo update
 
-# Show dependencies
 deps:
 	cargo tree

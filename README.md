@@ -1,7 +1,7 @@
 # UsporediCijene Preprocessing Tool
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/rust-1.93%2B-orange.svg)](https://www.rust-lang.org/)
 
 A Rust tool that processes Croatian retail store data - validates, cleans, and prepares it for analysis. Uses parallel processing for high performance.
 

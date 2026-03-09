@@ -1,80 +1,50 @@
 repos:
-  # Rust-specific hooks
-  - repo: https://github.com/doublify/pre-commit-rust
-    rev: v1.0
+  # General file hygiene hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
     hooks:
-      - id: fmt
-        name: Rust formatting (cargo fmt)
-        description: Format Rust code with cargo fmt
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  # Rust hooks (all local — no external repo needed)
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo fmt
         entry: cargo fmt
         language: system
         files: \.rs$
         pass_filenames: false
 
-      - id: clippy
-        name: Rust linting (cargo clippy)
-        description: Lint Rust code with cargo clippy
+      - id: cargo-clippy
+        name: cargo clippy
         entry: sh -c 'cargo clippy --all-targets --all-features -- -D warnings'
         language: system
         files: \.rs$
         pass_filenames: false
 
       - id: cargo-check
-        name: Rust compilation check (cargo check)
-        description: Check Rust code compiles
+        name: cargo check
         entry: cargo check --all-targets --all-features
         language: system
         files: \.rs$
         pass_filenames: false
 
-  # Additional general hooks
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
-    hooks:
-      - id: trailing-whitespace
-        name: Trim trailing whitespace
-        description: Remove trailing whitespace from files
-
-      - id: end-of-file-fixer
-        name: Fix end of files
-        description: Ensure files end with a newline
-
-      - id: check-yaml
-        name: Check YAML syntax
-        description: Check YAML files for syntax errors
-
-      - id: check-toml
-        name: Check TOML syntax
-        description: Check TOML files for syntax errors
-
-      - id: check-merge-conflict
-        name: Check for merge conflicts
-        description: Check for merge conflict markers
-
-      - id: check-case-conflict
-        name: Check for case conflicts
-        description: Check for files with case conflicts
-
-      - id: mixed-line-ending
-        name: Check line endings
-        description: Check for mixed line endings
-        args: ['--fix=lf']
-
-  # Rust-specific additional checks
-  - repo: local
-    hooks:
       - id: cargo-test
-        name: Run Rust tests (cargo test)
-        description: Run all Rust tests
+        name: cargo test
         entry: cargo test --all-features
         language: system
         files: \.rs$
         pass_filenames: false
-        stages: [pre-commit]
 
       - id: cargo-doc
-        name: Check Rust documentation (cargo doc)
-        description: Check that documentation builds successfully
+        name: cargo doc
         entry: cargo doc --no-deps --document-private-items
         language: system
         files: \.rs$
@@ -82,9 +52,8 @@ repos:
         stages: [pre-push]
 
       - id: cargo-audit
-        name: Security audit (cargo audit)
-        description: Check for security vulnerabilities
-        entry: bash -c 'if command -v cargo-audit >/dev/null 2>&1; then cargo audit; else echo "cargo-audit not installed, skipping security check"; fi'
+        name: cargo audit
+        entry: bash -c 'if command -v cargo-audit >/dev/null 2>&1; then cargo audit; else echo "cargo-audit not installed, skipping"; fi'
         language: system
         files: Cargo\.(toml|lock)$
         pass_filenames: false
