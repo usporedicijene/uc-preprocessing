@@ -116,8 +116,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &found_cities,
         config.cities_mapping_file(),
     ) {
-        error!("City validation failed: {}", e);
-        std::process::exit(1);
+        warn!(
+            "City validation warning: {} Unmapped cities will be set to \"Unknown\".",
+            e
+        );
     }
 
     // Validate categories
@@ -130,8 +132,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &found_categories,
         config.categories_mapping_file(),
     ) {
-        error!("Category validation failed: {}", e);
-        std::process::exit(1);
+        warn!(
+            "Category validation warning: {} Unmapped categories will be set to \"Unknown\".",
+            e
+        );
     }
 
     // Proceed with cleaning data
