@@ -322,27 +322,27 @@ pub fn transform_and_sort_products_csv(
         total_rows += 1;
         match result {
             Ok(mut record) => {
-                // Replace category value with mapping if it exists
+                // Replace category value with mapping if it exists, fall back to "Unknown"
                 let mut final_category = String::new();
                 if let Some(category_value) = record.get(category_col_index) {
-                    if let Some(mapped_category) = category_mappings.get(category_value.trim()) {
-                        final_category = mapped_category.clone();
-                        record = csv::StringRecord::from(
-                            record
-                                .iter()
-                                .enumerate()
-                                .map(|(i, field)| {
-                                    if i == category_col_index {
-                                        mapped_category.as_str()
-                                    } else {
-                                        field
-                                    }
-                                })
-                                .collect::<Vec<_>>(),
-                        );
-                    } else {
-                        final_category = category_value.trim().to_string();
-                    }
+                    let mapped_category = category_mappings
+                        .get(category_value.trim())
+                        .map(|s| s.as_str())
+                        .unwrap_or("Unknown");
+                    final_category = mapped_category.to_string();
+                    record = csv::StringRecord::from(
+                        record
+                            .iter()
+                            .enumerate()
+                            .map(|(i, field)| {
+                                if i == category_col_index {
+                                    mapped_category
+                                } else {
+                                    field
+                                }
+                            })
+                            .collect::<Vec<_>>(),
+                    );
                 }
 
                 // Skip products whose mapped categories end with "~~"
@@ -435,17 +435,19 @@ pub fn transform_and_sort_stores_csv(
         total_rows += 1;
         match result {
             Ok(mut record) => {
-                // Replace city value with mapping if it exists
-                if let Some(city_value) = record.get(city_col_index)
-                    && let Some(mapped_city) = city_mappings.get(city_value.trim())
-                {
+                // Replace city value with mapping if it exists, fall back to "Unknown"
+                if let Some(city_value) = record.get(city_col_index) {
+                    let mapped_city = city_mappings
+                        .get(city_value.trim())
+                        .map(|s| s.as_str())
+                        .unwrap_or("Unknown");
                     record = csv::StringRecord::from(
                         record
                             .iter()
                             .enumerate()
                             .map(|(i, field)| {
                                 if i == city_col_index {
-                                    mapped_city.as_str()
+                                    mapped_city
                                 } else {
                                     field
                                 }
